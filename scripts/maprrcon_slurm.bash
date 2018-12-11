@@ -1,0 +1,1 @@
+/gpfs/data/proteomics/projects/Sunny/bash/maprrcon_slurm.bash
