@@ -52,6 +52,11 @@ pathtoreg=/gpfs/data/proteomics/projects/Sunny/RepeatMaskerL1HsInfo
 reg=ucsc.rmsk.hg38.L1HS.bed
 threshmis=$3
 
+
+#####################################################################
+################ NO NEED TO CHANGE BELOW ############################
+#####################################################################
+
 # get the sample names and determine if paired end
 alen=${#filename[@]}
 if (($alen == 2));then
