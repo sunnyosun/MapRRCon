@@ -1,0 +1,45 @@
+#!/bin/bash                                                                                                                     
+
+#SBATCH --job-name=MapRRCon_Norm
+##SBATCH --nodes=1
+##SBATCH --cpus-per-task=1
+#SBATCH --mem=100GB
+##SBATCH --gres=gpu:1
+##SBATCH --partition=gpu4_medium
+#SBATCH --partition=cpu_short
+#SBATCH --error=/gpfs/data/proteomics/projects/Sunny/chipseq/20181203_FCHN3FWBGX7/err_out/%x_%j.err
+#SBATCH --output=/gpfs/data/proteomics/projects/Sunny/chipseq/20181203_FCHN3FWBGX7/err_out/%x_%j.out
+##SBATCH --dependency=afterany:job_id
+
+
+# running directory: /gpfs/data/proteomics/projects/Sunny/chipseq/20190124_FCHGKGVBGX7
+
+wd=`pwd`
+mkdir $wd/maprrcon
+mkdir $wd/maprrcon/stats
+
+declare -a arr=("L1HS" "L1PA2" "L1PA3" "L1PA4" "L1PA5" "L1PA6" "L1PA7")
+for i in "${arr[@]}"
+do
+mkdir $wd/maprrcon/$i
+mkdir $wd/maprrcon/$i/plots
+mkdir $wd/maprrcon/$i/bedgraph
+mkdir $wd/maprrcon/$i/norm
+mv $wd/fastq/*/maprrcon_$i/*.bedgraph $wd/maprrcon/$i/bedgraph
+done
+
+touch $wd/maprrcon/stats/stats.txt
+for i in $wd/err_out/MapRRCon_main_*.out
+do
+tail -n +11 $i | head -n 1 >> $wd/maprrcon/stats/stats.txt
+done
+sed -e 's/.sort.bam//g' $wd/maprrcon/stats/stats.txt | cut -f1,4 > $wd/maprrcon/stats/out.txt
+rm $wd/maprrcon/stats/stats.txt
+
+module purge
+module load r/3.5.1
+declare -a arr=("L1HS" "L1PA2" "L1PA3" "L1PA4" "L1PA5" "L1PA6" "L1PA7")
+for i in "${arr[@]}"
+do
+Rscript MapRRCon_Norm_run.R $wd/readme $wd/maprrcon/stats/out.txt $i $wd/maprrcon/$i/bedgraph $wd/maprrcon/$i
+done

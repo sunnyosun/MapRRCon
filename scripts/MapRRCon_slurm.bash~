@@ -1,0 +1,106 @@
+#!/bin/bash                                                                                                                     
+
+#SBATCH --job-name=MapRRCon_main
+##SBATCH --nodes=1
+##SBATCH --cpus-per-task=1
+#SBATCH --mem=100GB
+##SBATCH --gres=gpu:1
+##SBATCH --partition=gpu4_medium
+#SBATCH --partition=cpu_short
+#SBATCH --error=/gpfs/data/proteomics/projects/Sunny/chipseq/20181217_FCHMYTCBGX7/err_out/%x_%j.err
+#SBATCH --output=/gpfs/data/proteomics/projects/Sunny/chipseq/20181217_FCHMYTCBGX7/err_out/%x_%j.out
+##SBATCH --dependency=afterany:job_id
+
+####################################################################
+####################################################################
+########################### Modules ################################
+####################################################################
+####################################################################
+
+module load bwa/0.7.17
+module load samtools/1.3
+module load bedtools/2.26.0
+
+####################################################################
+########################### Inputs #################################
+####################################################################
+
+# needs 3 inputs from commandline                                                                                             
+# 1. folder that contains the fastq.gz files (full path)                            
+# 2. genome assembly (hg19 or hg38)
+# 3. number of mismatches (e.g. 3)
+
+dir=$1
+echo 'working directory: '
+echo $dir
+cd ${dir}
+filename=(`ls *.fastq.gz`)
+str=${filename[0]}
+IFS=’_’ read -ra NAMES <<< "$str"
+name=${NAMES[0]}
+
+echo 'genome assembly: '
+echo $2
+bam=${name}.bam
+sortbam=${name}.sort
+coverage=${name}_coverage.bedgraph
+l1hsbam=${sortbam}.bam.L1HsOnly.bam
+
+# directories of reference genome and L1
+genome=/gpfs/data/proteomics/projects/Sunny/genome/human/$2.fa
+dir2=/gpfs/data/proteomics/projects/Sunny/te_extraction
+pathtoreg=/gpfs/data/proteomics/projects/Sunny/RepeatMaskerL1HsInfo
+threshmis=$3
+
+
+#####################################################################
+################ NO NEED TO CHANGE BELOW ############################
+#####################################################################
+
+# get the sample names and determine if paired end
+alen=${#filename[@]}
+if (($alen == 2));then
+    echo "pair"
+    fq_r1=${filename[0]}
+    fq_r2=${filename[1]}
+    echo "fq_r1=${fq_r1}"
+    echo "fq_r2=${fq_r2}"
+    cd ${dir}
+    bwa mem -t 4 ${genome} ${dir}/${fq_r1} ${dir}/${fq_r2} | samtools view -b -S - > ${dir}/${bam}
+else
+    echo "single"
+    fq_r1=${filename[0]}
+    echo "fq_r1=${fq_r1}"
+    cd ${dir}
+    bwa mem -t 4 ${genome} ${dir}/${fq_r1} | samtools view -b -S - > ${dir}/${bam}
+fi
+
+# alignment to the reference genome
+#samtools sort ${dir}/${bam} > ${dir}/${sortbam}.bam
+#samtools index ${dir}/${sortbam}.bam
+#rm ${dir}/${bam}
+#bedtools genomecov -ibam ${dir}/${sortbam}.bam -bga > ${dir}/${coverage}
+
+# L1xx feature extraction
+declare -a arr=("L1HS" "L1PA2" "L1PA3" "L1PA4" "L1PA5" "L1PA6" "L1PA7")
+for i in "${arr[@]}"
+do
+mkdir maprrcon_$i
+l1hs=/gpfs/data/proteomics/projects/Sunny/genome/L1/$i.fa
+reg=ucsc.rmsk.$2.$i.bed
+cd ${dir2}
+java -classpath sam-1.89.jar:. ExtractSubsetOfBAMBasedOnBedFile ${dir} ${pathtoreg} ${sortbam}.bam ${reg} ${threshmis}
+cd ${dir}
+# convert bam to fastq
+samtools fastq ${dir}/${l1hsbam} > ${dir}/${l1hsbam}.fastq
+# remap to L1HS
+bwa mem -t 1 ${l1hs} ${dir}/${l1hsbam}.fastq | samtools view -b -S - > ${dir}/${l1hsbam}.fastq.bam
+samtools sort ${dir}/${l1hsbam}.fastq.bam > ${dir}/${l1hsbam}.fastq.bam.sort.bam
+rm ${dir}/${l1hsbam}.fastq.bam
+samtools index ${dir}/${l1hsbam}.fastq.bam.sort.bam
+bedtools genomecov -ibam ${dir}/${l1hsbam}.fastq.bam.sort.bam -d > ${dir}/${name}_${i}_coverage.bedgraph
+# reorganize directories
+for f in *L1Hs*; do mv -v "$f" "${f//L1Hs/$i}";done
+mv *${i}* maprrcon_$i
+mv ${name}_${i}_coverage.bedgraph maprrcon_$i
+done
