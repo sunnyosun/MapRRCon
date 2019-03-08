@@ -7,12 +7,13 @@
 ##SBATCH --gres=gpu:1
 ##SBATCH --partition=gpu4_medium
 #SBATCH --partition=cpu_short
-#SBATCH --error=/gpfs/data/proteomics/projects/Sunny/chipseq/20181203_FCHN3FWBGX7/err_out/%x_%j.err
-#SBATCH --output=/gpfs/data/proteomics/projects/Sunny/chipseq/20181203_FCHN3FWBGX7/err_out/%x_%j.out
+#SBATCH --time=02:00:00
+#SBATCH --error=/gpfs/data/proteomics/projects/Sunny/chipseq/20190308_FCHM2V7BGX9/err_out/%x_%j.err
+#SBATCH --output=/gpfs/data/proteomics/projects/Sunny/chipseq/20190308_FCHM2V7BGX9/err_out/%x_%j.out
 ##SBATCH --dependency=afterany:job_id
 
 
-# running directory: /gpfs/data/proteomics/projects/Sunny/chipseq/20190124_FCHGKGVBGX7
+# running directory: /gpfs/data/proteomics/projects/Sunny/chipseq/20190308_FCHM2V7BGX9
 
 wd=`pwd`
 mkdir $wd/maprrcon
