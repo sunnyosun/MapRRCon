@@ -1,4 +1,4 @@
-# MapRRCon_package
+# MapRRCon - Sun18
 
 This package provides the ChIP-seq analysis on human LINE-1 elements using MapRRCon
 
